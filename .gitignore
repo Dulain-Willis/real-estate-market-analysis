@@ -1,0 +1,22 @@
+# R session files
+
+.Rhistory
+.RData
+.Ruserdata
+
+#RStudio files
+
+.Rproj.user
+
+# renv
+
+renv/library/
+renv/staging/
+
+#Knitr
+
+*_cache/
+*.utf8.md
+*.knit.md
+ 
+data/hotness.csv
