@@ -1,0 +1,323 @@
+---
+title: "R Bootcamp - Individual Assignment"
+output:
+  html_document: default
+  pdf_document: default
+date: "2025-08-15"
+---
+
+```{r, include=FALSE}
+
+library(here)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(lubridate)
+library(scales)
+
+hotness <- read_csv(here::here("data", "hotness.csv"))
+
+```
+
+------------------------------------------------------------------------
+
+# Setup
+
+Some set up is required for the rest of the questions
+
+-   Zip name is split up into 2 fields - city & state
+-   Month date field is split into 2 fields - year & month
+
+
+```{r}
+
+hotness <- hotness %>%
+  separate(
+    zip_name, 
+    into = c("city", "state"), 
+    sep = ", ", 
+    fill = "right", 
+    remove = FALSE) %>%
+  mutate(
+    state = toupper(state),
+    month_date = ym(as.character(month_date_yyyymm)),
+    year = year(month_date),
+    month  = month(month_date)
+  )
+
+```
+
+------------------------------------------------------------------------
+
+# State Profile Summary
+
+To get median days on market and median listing price per state (annual) we group by `state` and `year`. Then for each group of postal codes grouped by `state` & `year`, we take the median of the median days on market and median listing price.
+
+
+```{r, echo = TRUE}
+
+state_summary <- hotness %>%
+  group_by(state, year = year(month_date)) %>%
+  summarise(
+    median_days_on_market_sm = median(median_days_on_market, na.rm=TRUE),
+    median_listing_price_sm = median(median_listing_price, na.rm=TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(state, desc(year))
+
+```
+
+------------------------------------------------------------------------
+
+## State Profile Plot
+
+### Median Days On Market
+
+Taking the output from before we plot separate line plots of median days on market for each state. Each plot is annual over all the years included in the data (2020-2025).
+
+
+```{r}
+
+ggplot(state_summary, aes(x = year, y = median_days_on_market_sm)) +
+  geom_line() +
+  facet_wrap(~ state) +
+  labs(
+    title = "Median Days on Market by State (Annual)",
+    x = "2020 - 2025",
+    y = "Days"
+  ) +
+  theme(
+    axis.text.x = element_blank(),   
+    axis.ticks.x = element_blank(),  
+    strip.text = element_text(size = 7),  
+    axis.text = element_text(size = 5)    
+  )
+
+```
+
+------------------------------------------------------------------------
+
+## State Profile Plot
+
+### Median Listing Price
+
+Taking the output from before we plot separate line plots of median listing price for each state. Each plot is annual over all the years included in the data (2020-2025).
+
+------------------------------------------------------------------------
+
+```{r}
+
+ggplot(state_summary, aes(year, median_listing_price_sm)) +
+  geom_line() +
+  facet_wrap(~ state) +
+  labs(
+    title = "Median Listing Price by State (Annual)",
+    x = "2020 - 2025",
+    y = "Listing Price"
+  ) +
+  theme(
+    axis.text.x = element_blank(),   
+    axis.ticks.x = element_blank(),  
+    strip.text = element_text(size = 7),  
+    axis.text = element_text(size = 5)    
+  )
+  
+```
+
+------------------------------------------------------------------------
+
+# Deep Dive
+
+We do the same calculations as before but filter for 2022-2023, and for states GA, FL, & AL.
+
+------------------------------------------------------------------------
+
+```{r}
+
+deep_dive <- hotness %>%
+  filter(
+    state %in% c("GA", "FL", "AL"),
+    year %in% c(2022, 2023)
+  ) %>%
+  group_by(state, year) %>%
+  summarise(
+    median_days_on_market_dd = median(median_days_on_market, na.rm=TRUE),
+    median_listing_price_dd = median(median_listing_price, na.rm=TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(state, desc(year))
+
+```
+
+------------------------------------------------------------------------
+
+## Deep Dive Plot
+
+### Median Days on Market
+
+The filtered annual calculations are plotted for median days on market.
+
+------------------------------------------------------------------------
+
+```{r}
+
+ggplot(deep_dive, aes(x = year, y = median_days_on_market_dd, color = state)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ state, ncol = 3) +
+  scale_x_continuous(breaks = c(2022, 2023)) +
+  labs(
+    title = "Median Days on Market — AL vs FL vs GA (2022–2023)",
+    x = NULL, y = "Median Days"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 8),
+    axis.text = element_text(size = 8)
+  )
+
+
+```
+
+------------------------------------------------------------------------
+
+From 2022 to 2023, the median days on market rose in AL, FL, and GA. This means homes took longer to sell. The slowdown was most aggressive in AL and FL while GA stayed the least affected in both years. This indicates relatively stronger demand or limited supply there. The trend in these states aligns with rising mortgage rates from 2022 through 2023. The smaller uptick in GA suggests local resilience keeping turnover faster than neighboring states.
+
+## Deep Dive Plot
+
+### Median Listing Price
+
+The filtered annual calculations are plotted for median listing price.
+
+------------------------------------------------------------------------
+
+```{r}
+
+ggplot(deep_dive, aes(year, median_listing_price_dd, color = state)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ state, ncol = 3) +
+  scale_x_continuous(breaks = c(2022, 2023)) +
+  labs(title = "Median Listing Price by State (2022–2023)",
+       x = "Year", y = "Listing Price") +
+  theme_minimal() +
+  theme(axis.text = element_text(size =6))
+
+```
+
+From 2022 to 2023, median listing prices in AL, FL, and GA all rose, even though before we saw days on market lengthened across all 3 states. The combo of prices going up while homes take longer to sell suggests demand cooled as mortgage rates rose, but low inventory allowed sellers to keep their pricing power. FL remains the highest priced market with only a small further rise probably plateauing near the top. GA shows a clearer increase yet still moves the fastest, and AL climbs from a lower base. In summary homes took longer to sell, but prices stayed high because there weren’t many homes for sale even with higher mortgage rates.
+
+------------------------------------------------------------------------
+
+# Hotness Rank
+
+To get hotness rank per state over time we'll group by `state` and `month_date`. Then for each of those rows we find the mean of hotness rank.
+
+```{r}
+
+state_hotness <- hotness %>%
+  group_by(state, month_date) %>%
+  summarise(
+    hotness_rank_state = mean(hotness_rank, na.rm = TRUE), 
+    .groups = "drop") %>%
+  arrange(state, month_date)
+
+```
+
+## Hotness Plot
+
+### Hotness Rank by State
+
+```{r}
+
+ggplot(state_hotness, aes(month_date, hotness_rank_state)) +
+  geom_line() +
+  facet_wrap(~ state) +
+  scale_y_reverse() +  
+  labs(title = "Hotness Rank by State by Month (2020-2025)",
+       x = NULL, y = "Hotness Rank (lower = hotter)") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        strip.text = element_text(size = 8),
+        axis.text = element_text(size = 6))
+
+```
+
+-   DC: Their hotness rank drifts down while many states drift up. This points to a persistent demand keeping DC competitive even as rates rose. This could be due to return-to-office initiatives, high incomes, or low inner-city inventory.
+
+-   UT: The trend jumps up meaning homes suddenly took longer to sell, then it slides back down a bit, meaning it heated up again. This insinuates a boom then cool story where lots of people move in and prices go up, but then higher mortgage rates and more new homes made buyers pull back. In summary it’s a bumpy market, so good deals appear in waves and sellers may need flexible pricing.
+
+------------------------------------------------------------------------
+
+## Hotness Plot
+
+### Hotness Rank by Top 5 States
+
+Using the hotness rank calculation from earlier we take the top 5 states.
+
+```{r}
+
+top_states <- state_hotness %>%
+  group_by(state) %>%
+  summarise(
+    avg_rank = mean(hotness_rank_state, na.rm = TRUE), 
+    .groups = "drop") %>%
+  arrange(avg_rank) %>%
+  slice_head(n = 5) %>%
+  pull(state)
+
+top_states_data <- filter(state_hotness, state %in% top_states)
+
+```
+
+```{r}
+
+ggplot(top_states_data, aes(x = month_date, y = hotness_rank_state, color = state)) +
+  geom_line() +
+  labs(title = "Hotness Rank of Top 5 States Over Time",
+       x = "Month", y = "Hotness Rank") +
+  theme_minimal()
+
+```
+
+All of the top five trended hotter from 2017–2021 meaning homes sold faster and demand outpaced supply relative to other states. Then the trends cooled in 2022–24 (ranks rose), meaning homes took longer to sell and demand eased relative to supply of other states. 
+
+
+# Custom Visualization
+
+Here we set up to create a per state benchmark to compare average buyer demand with market hotness.
+
+```{r}
+
+state_custom <- hotness %>%
+  group_by(state) %>%
+  summarise(
+    avg_demand = mean(demand_score, na.rm = TRUE),
+    avg_rank   = mean(hotness_rank,  na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  filter(!is.na(state))
+
+```
+
+```{r}
+
+ggplot(state_custom, aes(x = avg_demand, y = avg_rank)) +
+  geom_point(alpha = 0.7) +
+  scale_y_reverse() +  # lower rank = hotter
+  labs(
+    title = "Average Demand vs Average Hotness Rank (All Time)",
+    x = "Average Demand Score (higher = more interest)",
+    y = "Average Hotness Rank (lower = hotter)"
+  ) +
+  theme_minimal()
+
+```
+
+The graph shows a clear relationship being that higher average demand leads to better (lower) average hotness rank remembering the y-axis is reversed.
+
+# Hotness Discussion
+
+A market is “hot” when more buyers are chasing fewer homes. In these environments listings get lots of views, sell fast, get various offers, and don't face price cuts. My intuition was that places with low inventory but attractive factors like job opportunities, and in-migration would stay hot. The findings mostly line up with this thinking, but I failed to also think about how rising mortgage rates could affect specific scenarios. In these places prices would stay more sticky. 

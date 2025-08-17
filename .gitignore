@@ -20,3 +20,6 @@ renv/staging/
 *.knit.md
  
 data/hotness.csv
+
+.DS_Store
+.Rapp.history
