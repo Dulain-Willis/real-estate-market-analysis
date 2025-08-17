@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.5.0",
+    "Version": "4.4.1",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -43,7 +43,8 @@
       "NeedsCompilation": "yes",
       "Author": "Brian Ripley [aut, cre, cph], Bill Venables [aut, cph], Douglas M. Bates [ctb], Kurt Hornik [trl] (partial port ca 1998), Albrecht Gebhardt [trl] (partial port ca 1998), David Firth [ctb] (support functions for polr)",
       "Maintainer": "Brian Ripley <Brian.Ripley@R-project.org>",
-      "Repository": "CRAN"
+      "Repository": "RSPM",
+      "Encoding": "UTF-8"
     },
     "Matrix": {
       "Package": "Matrix",
